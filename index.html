@@ -27,6 +27,7 @@
       function navigate(r) { if (!ROUTES.includes(r)) return; location.hash = r; }
       return [route, navigate];
     }
+
     const PORTS = [
       { name: "Assab", x: 97, y: 1211 }, { name: "Cursed City", x: 101, y: 636 },
       { name: "Al-Khalif", x: 110, y: 1393 }, { name: "Nisogora", x: 166, y: 434 },
@@ -51,6 +52,7 @@
       { name: "Freebooter Bay", x: 1763, y: 835 }, { name: "Freedom Bay", x: 1769, y: 508 },
     ];
     function dist(a,b){const dx=a.x-b.x, dy=a.y-b.y; return Math.sqrt(dx*dx+dy*dy);}
+
     function Nav({ route, go }){
       const entries=[{label:"Home",path:"/"},{label:"Map",path:"/map"},{label:"Trade",path:"/trade"},{label:"Loadouts",path:"/loadouts"},{label:"Production",path:"/production"},{label:"Guides",path:"/guides"}];
       return(<header className="flex items-center justify-between p-3 bg-slate-900 text-slate-100 border-b border-slate-800">
@@ -59,6 +61,7 @@
           <button key={e.path} onClick={()=>go(e.path)} className={`px-3 py-1.5 rounded-xl ${route===e.path?"bg-slate-700":"bg-slate-800 hover:bg-slate-700"}`}>{e.label}</button>
         ))}</nav></header>);
     }
+
     function HomePage({ go }){
       return(<div className="p-6 text-slate-100 grid grid-cols-1 xl:grid-cols-3 gap-4">
         <section className="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
@@ -72,10 +75,9 @@
         <section className="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
           <h3 className="font-semibold">What You Can Do</h3>
           <ul className="list-disc ml-5 text-slate-300 text-sm mt-2 space-y-1">
-            <li>Pan/zoom map; click ports to measure distance.</li>
+            <li>Use the interactive map (embedded 1:1 from your reference project).</li>
             <li>Upload <b>private CSV</b> of prices; compute best routes.</li>
             <li>Adjust distance penalty to prefer short hops or long hauls.</li>
-            <li>Future: ship/gear loadouts, craft chains, live market hooks.</li>
           </ul>
         </section>
         <section className="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
@@ -83,50 +85,13 @@
           <ul className="list-disc ml-5 text-slate-300 text-sm mt-2 space-y-1">
             <li>Trade CSV format: first column <b>Port</b>, then commodity columns.</li>
             <li>Ports must match map names (Aldansk, Bord Radel, etc.).</li>
-            <li>We can add a mapping tool if your sheet uses aliases.</li>
           </ul>
         </section>
       </div>);
     }
-    function MapPage(){
-      const [scale,setScale]=useState(0.6);
-      const [offset,setOffset]=useState({x:0,y:0});
-      const [hoverPort,setHoverPort]=useState(null);
-      const [selectedA,setSelectedA]=useState(null);
-      const [selectedB,setSelectedB]=useState(null);
-      const dragStart=useRef(null);
-      const bounds=useMemo(()=>{const maxX=Math.max(...PORTS.map(p=>p.x)); const maxY=Math.max(...PORTS.map(p=>p.y)); return {width:maxX+100,height:maxY+100};},[]);
-      const nameToPort=useMemo(()=>{const m={}; PORTS.forEach(p=>m[p.name]=p); return m;},[]);
-      function onWheel(e){e.preventDefault(); setScale(s=>Math.min(2,Math.max(0.2,s+-e.deltaY*0.001)));}
-      function onMouseDown(e){dragStart.current={x:e.clientX-offset.x,y:e.clientY-offset.y};}
-      function onMouseMove(e){if(!dragStart.current) return; setOffset({x:e.clientX-dragStart.current.x,y:e.clientY-dragStart.current.y});}
-      function onMouseUp(){dragStart.current=null;}
-      const A = selectedA ? nameToPort[selectedA] : null;
-      const B = selectedB ? nameToPort[selectedB] : null;
-      return(<div className="w-full h-[calc(100vh-56px)] relative bg-slate-950 text-slate-100">
-        <div className="absolute left-4 top-4 z-10 space-x-2">
-          <button className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700" onClick={()=>{setSelectedA(null); setSelectedB(null);}}>Reset</button>
-        </div>
-        <div className="absolute right-4 top-4 z-10 rounded-xl bg-slate-900/80 px-3 py-2 text-sm">
-          <div>Point A: {selectedA || "—"}</div><div>Point B: {selectedB || "—"}</div>{A && B && <div>Distance: {Math.round(dist(A,B))}</div>}
-        </div>
-        <div className="absolute inset-0" onWheel={onWheel} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-          <svg width="100%" height="100%" viewBox={`0 0 ${bounds.width} ${bounds.height}`} style={{transform:`translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin:"0 0"}} className="bg-gradient-to-br from-slate-900 to-slate-800">
-            <defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="#1f2937" strokeWidth="2"/></pattern></defs>
-            <rect width="100%" height="100%" fill="url(#grid)"/>
-            {PORTS.map(p=>(<g key={p.name} onMouseEnter={()=>setHoverPort(p.name)} onMouseLeave={()=>setHoverPort(null)} onClick={()=> (selectedA && !selectedB ? setSelectedB(p.name) : setSelectedA(p.name))}>
-              <circle cx={p.x} cy={p.y} r={(selectedA===p.name || selectedB===p.name)?9:6} fill={selectedA===p.name?"#34d399":(selectedB===p.name?"#60a5fa":"#e5e7eb")} opacity="0.95"/>
-              <text x={p.x+10} y={p.y-10} fontSize="16" fill="#e5e7eb">{p.name}</text>
-            </g>))}
-            {A && B && <line x1={A.x} y1={A.y} x2={B.x} y2={B.y} stroke="#34d399" strokeWidth="4" opacity="0.7"/>}
-          </svg>
-        </div>
-        {hoverPort && (<div className="absolute left-4 bottom-4 bg-slate-900/80 rounded-xl px-3 py-2 text-sm shadow">
-          <div className="font-semibold">{hoverPort}</div>
-          <div className="text-slate-300">({PORTS.find(p=>p.name===hoverPort).x}, {PORTS.find(p=>p.name===hoverPort).y})</div>
-        </div>)}
-      </div>);
-    }
+
+    function MapPage(){ return (<div className="w-full h-[calc(100vh-56px)] bg-black"><iframe src="./wosb-map/index.html" title="WOSB Map" className="w-full h-full border-0"></iframe></div>); }
+
     function TradePage(){
       const [commodityList,setCommodityList]=useState([]);
       const [priceTable,setPriceTable]=useState({});
@@ -138,64 +103,92 @@
         Papa.parse(file, { header:true, skipEmptyLines:true, complete:(results)=>{
           const rows=results.data||[]; const cols=results.meta.fields||[]; const commodities=cols.filter(c=>c!=="Port");
           const price={};
-          for(const row of rows){ const port=String(row["Port"]||"").trim(); if(!port) continue; price[port]=price[port]||{};
-            for(const c of commodities){ const v=parseFloat(String(row[c]).replace(/[^0-9.\-]/g,"")); if(!isNaN(v)) price[port][c]=v; }
+          for(const row of rows){
+            const port=String(row["Port"]||"").trim(); if(!port) continue;
+            price[port]=price[port]||{};
+            for(const c of commodities){
+              const v=parseFloat(String(row[c]).replace(/[^0-9.\-]/g,"")); if(!isNaN(v)) price[port][c]=v;
+            }
           }
           setCommodityList(commodities); setPriceTable(price); if(!selectedCommodity && commodities.length) setSelectedCommodity(commodities[0]);
         }});
       }
+      function distAB(a,b){const dx=a.x-b.x, dy=a.y-b.y; return Math.sqrt(dx*dx+dy*dy);}
       function computeTopRoutes(){
         if(!selectedCommodity) return;
         const ports=Object.keys(priceTable).filter(p=>nameToPort[p]);
         const pairs=[];
-        for(let i=0;i<ports.length;i++){ for(let j=0;j<ports.length;j++){ if(i===j) continue;
-          const a=ports[i], b=ports[j]; const buy=priceTable[a]?.[selectedCommodity]; const sell=priceTable[b]?.[selectedCommodity]; if(buy==null || sell==null) continue;
-          const profit=sell-buy; const d=dist(PORTS.find(p=>p.name===a), PORTS.find(p=>p.name===b)); const score=profit - distanceWeight*d;
-          pairs.push({from:a,to:b,buy,sell,profit,distance:Math.round(d),score});
-        }}
+        for(let i=0;i<ports.length;i++){
+          for(let j=0;j<ports.length;j++){
+            if(i===j) continue;
+            const a=ports[i], b=ports[j];
+            const buy=priceTable[a]?.[selectedCommodity];
+            const sell=priceTable[b]?.[selectedCommodity];
+            if(buy==null || sell==null) continue;
+            const profit=sell-buy;
+            const d=distAB(nameToPort[a], nameToPort[b]);
+            const score=profit - distanceWeight*d;
+            pairs.push({from:a,to:b,buy,sell,profit,distance:Math.round(d),score});
+          }
+        }
         setTopRoutes(pairs.sort((x,y)=>y.score-x.score).slice(0,10));
       }
-      return(<div className="p-6 text-slate-100 grid grid-cols-1 xl:grid-cols-3 gap-4 bg-slate-950 min-h-[calc(100vh-56px)]">
-        <section className="xl:col-span-1 rounded-2xl bg-slate-900/70 p-4 border border-slate-800 space-y-3">
-          <h2 className="text-xl font-semibold">Trade Data</h2>
-          <input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files && handleCSV(e.target.files[0])} className="block w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-slate-700 file:text-white"/>
-          <div><label className="text-sm">Commodity</label>
-            <select value={selectedCommodity} onChange={(e)=>setSelectedCommodity(e.target.value)} className="w-full mt-1 rounded-xl bg-slate-800 p-2">
-              <option value="" disabled>Select a commodity</option>
-              {commodityList.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div><label className="text-sm">Distance penalty (per grid): {distanceWeight.toFixed(3)}</label>
-            <input type="range" min={0} max={0.1} step={0.001} value={distanceWeight} onChange={(e)=>setDistanceWeight(parseFloat(e.target.value))} className="w-full"/>
-          </div>
-          <button onClick={computeTopRoutes} className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Compute Best Routes</button>
-          {topRoutes.length>0 && (<div className="mt-3"><h3 className="font-semibold">Top Opportunities</h3>
-            <div className="mt-2 space-y-2">{topRoutes.map((r,i)=>(<div key={i} className="rounded-xl bg-slate-800 p-2 text-sm">
-              <div className="font-semibold">{r.from} → {r.to}</div>
-              <div className="text-slate-300">Profit: <span className="text-emerald-400">+{r.profit}</span> | Dist: {r.distance} | Score: {r.score.toFixed(1)}</div>
-              <div className="text-slate-400">Buy {selectedCommodity}: {r.buy} | Sell: {r.sell}</div>
-            </div>))}</div></div>)}
-        </section>
-        <section className="xl:col-span-2 rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
-          <h2 className="text-xl font-semibold mb-2">Planner Map</h2>
-          <p className="text-slate-300 text-sm mb-2">Upload prices on the left, then compute routes and visualize below.</p>
-          <MiniMap selectedRoutes={topRoutes}/>
-        </section>
-      </div>);
+      return (
+        <div className="p-6 text-slate-100 grid grid-cols-1 xl:grid-cols-3 gap-4 bg-slate-950 min-h-[calc(100vh-56px)]">
+          <section className="xl:col-span-1 rounded-2xl bg-slate-900/70 p-4 border border-slate-800 space-y-3">
+            <h2 className="text-xl font-semibold">Trade Data</h2>
+            <input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files && handleCSV(e.target.files[0])} className="block w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:bg-slate-700 file:text-white"/>
+            <div>
+              <label className="text-sm">Commodity</label>
+              <select value={selectedCommodity} onChange={(e)=>setSelectedCommodity(e.target.value)} className="w-full mt-1 rounded-xl bg-slate-800 p-2">
+                <option value="" disabled>Select a commodity</option>
+                {commodityList.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">Distance penalty (per grid): {distanceWeight.toFixed(3)}</label>
+              <input type="range" min="0" max="0.1" step="0.001" value={distanceWeight} onChange={(e)=>setDistanceWeight(parseFloat(e.target.value))} className="w-full"/>
+            </div>
+            <button onClick={computeTopRoutes} className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Compute Best Routes</button>
+            {topRoutes.length>0 && (
+              <div className="mt-3">
+                <h3 className="font-semibold">Top Opportunities</h3>
+                <div className="mt-2 space-y-2">
+                  {topRoutes.map((r,i)=>(
+                    <div key={i} className="rounded-2xl bg-slate-800 p-3 text-sm">
+                      <div className="font-semibold">{r.from} → {r.to}</div>
+                      <div className="text-slate-300">Profit: <span className="text-emerald-400">+{r.profit}</span> | Dist: {r.distance} | Score: {r.score.toFixed(1)}</div>
+                      <div className="text-slate-400">Buy {selectedCommodity}: {r.buy} | Sell: {r.sell}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+          <section className="xl:col-span-2 rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
+            <h2 className="text-xl font-semibold mb-2">Planner Map</h2>
+            <p className="text-slate-300 text-sm mb-2">Upload prices on the left, then compute routes and visualize below.</p>
+            <MiniMap selectedRoutes={topRoutes}/>
+          </section>
+        </div>
+      );
     }
+
     function MiniMap({ selectedRoutes }){
       const [scale]=useState(0.65); const [offset]=useState({x:0,y:0});
       const bounds=useMemo(()=>{const maxX=Math.max(...PORTS.map(p=>p.x)); const maxY=Math.max(...PORTS.map(p=>p.y)); return {width:maxX+100,height:maxY+100};},[]);
-      return(<svg width="100%" height={520} viewBox={`0 0 ${bounds.width} ${bounds.height}`} style={{transform:`translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin:"0 0"}} className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl">
+      return(<svg width="100%" height="520" viewBox={`0 0 ${bounds.width} ${bounds.height}`} style={{transform:`translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin:"0 0"}} className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl">
         <defs><pattern id="grid-mini" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="#1f2937" strokeWidth="2"/></pattern></defs>
         <rect width="100%" height="100%" fill="url(#grid-mini)"/>
-        {PORTS.map(p=>(<g key={p.name}><circle cx={p.x} cy={p.y} r={5} fill="#e5e7eb" opacity="0.95"/><text x={p.x+8} y={p.y-8} fontSize="14" fill="#e5e7eb">{p.name}</text></g>))}
+        {PORTS.map(p=>(<g key={p.name}><circle cx={p.x} cy={p.y} r="5" fill="#e5e7eb" opacity="0.95"/><text x={p.x+8} y={p.y-8} fontSize="14" fill="#e5e7eb">{p.name}</text></g>))}
         {selectedRoutes.map((r,i)=>{const A=PORTS.find(p=>p.name===r.from); const B=PORTS.find(p=>p.name===r.to); return <line key={i} x1={A.x} y1={A.y} x2={B.x} y2={B.y} stroke="#34d399" strokeWidth="4" opacity="0.6"/>;})}
       </svg>);
     }
-    function LoadoutsPage(){ return(<div className="p-6 text-slate-100 bg-slate-950 min-h-[calc(100vh-56px)]"><h2 className="text-xl font-semibold">Ship & Gear Loadouts (Coming Soon)</h2><ul className="list-disc ml-5 text-slate-300 mt-2"><li>Ship catalogue with stats (speed, cargo, guns, crew)</li><li>Gear & cannon planner (DPS, weight, cost, powder)</li><li>Saved presets per player, export/share</li></ul></div>); }
-    function ProductionPage(){ return(<div className="p-6 text-slate-100 bg-slate-950 min-h-[calc(100vh-56px)]"><h2 className="text-xl font-semibold">Production Planner (Coming Soon)</h2><ul className="list-disc ml-5 text-slate-300 mt-2"><li>Mine output & provision logic (Lv2 baseline, red-zone bonuses)</li><li>Manufactories chains & manpower (captives) calculator</li><li>Island vs Port production comparison</li></ul></div>); }
-    function GuidesPage(){ return(<div className="p-6 text-slate-100 bg-slate-950 min-h-[calc(100vh-56px)]"><h2 className="text-xl font-semibold">Guides (Coming Soon)</h2><ul className="list-disc ml-5 text-slate-300 mt-2"><li>Beginner trade routes & safety</li><li>Smuggler playbook (black flag bonuses)</li><li>Guild warfare & faction missions</li></ul></div>); }
+
+    function LoadoutsPage(){ return (<div className="p-6 text-slate-100">Loadouts coming soon.</div>); }
+    function ProductionPage(){ return (<div className="p-6 text-slate-100">Production planner coming soon.</div>); }
+    function GuidesPage(){ return (<div className="p-6 text-slate-100">Guides coming soon.</div>); }
+
     function App(){ const [route,go]=useHashRoute(); return(<div className="w-full h-screen bg-slate-950">
       <Nav route={route} go={go}/>
       {route==="/" && <HomePage go={go}/>}
